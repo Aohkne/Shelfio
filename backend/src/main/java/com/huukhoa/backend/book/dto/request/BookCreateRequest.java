@@ -2,6 +2,7 @@ package com.huukhoa.backend.book.dto.request;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -19,6 +20,7 @@ public class BookCreateRequest {
     String author;
 
     @NotBlank(message = "ISBN is required")
+    @Pattern(regexp = "^[0-9]{10}$|^[0-9]{13}$", message = "ISBN must be 10 or 13 digits")
     String isbn;
 
     String publisher;

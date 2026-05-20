@@ -4,6 +4,7 @@ import com.huukhoa.backend.admin.dto.response.StatsResponse;
 import com.huukhoa.backend.admin.service.AdminStatsService;
 import com.huukhoa.backend.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
@@ -23,7 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
     AdminStatsService adminStatsService;
 
-    @Operation(summary = "Get dashboard stats", description = "Requires ADMIN role. Returns total books, members, active borrows, and overdue count.")
+    @Operation(summary = "Get dashboard stats", description = "Requires ADMIN role. Returns total books, members, active borrows, and overdue count. Queries run in parallel.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Stats retrieved"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Requires ADMIN role")
+    })
     @GetMapping("/stats")
     @PreAuthorize("hasRole('ADMIN')")
     ApiResponse<StatsResponse> getStats() {

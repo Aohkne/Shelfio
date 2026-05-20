@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -16,6 +18,7 @@ public class ApiResponse<T> {
     private boolean success;
     private String message;
     private T data;
+    private Map<String, String> errors;
 
     public static <T> ApiResponse<T> ok(T data) {
         return ApiResponse.<T>builder()
@@ -44,6 +47,14 @@ public class ApiResponse<T> {
         return ApiResponse.<T>builder()
                 .success(false)
                 .message(message)
+                .build();
+    }
+
+    public static <T> ApiResponse<T> validationError(Map<String, String> errors) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .message("Validation failed")
+                .errors(errors)
                 .build();
     }
 }

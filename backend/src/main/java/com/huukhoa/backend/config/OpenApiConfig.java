@@ -42,6 +42,8 @@ public class OpenApiConfig {
                         new Server()
                                 .url(server)
                                 .description(serverDes)))
+                // Global security requirement — shows Authorize button on all endpoints
+                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
                 .components(
                         new Components()
                                 .addSecuritySchemes(
@@ -50,23 +52,52 @@ public class OpenApiConfig {
                                                 .type(SecurityScheme.Type.HTTP)
                                                 .scheme("bearer")
                                                 .bearerFormat("JWT")
-                                                .description("Enter JWT token in format: Bearer <token>")
-                                ));
+                                                .description("Enter JWT access token")));
     }
 
-    // FOR MICROSERVICE
     @Bean
-    public GroupedOpenApi groupedOpenApi() {
+    public GroupedOpenApi authGroup() {
         return GroupedOpenApi.builder()
-                .group("user-service")
-                .packagesToScan("com.huukhoa.backend.controller")
+                .group("Authentication")
+                .pathsToMatch("/auth/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi bookGroup() {
+        return GroupedOpenApi.builder()
+                .group("Book")
+                .pathsToMatch("/api/books/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi memberGroup() {
+        return GroupedOpenApi.builder()
+                .group("Member")
+                .pathsToMatch("/api/members/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi borrowingGroup() {
+        return GroupedOpenApi.builder()
+                .group("Borrowing")
+                .pathsToMatch("/api/borrowings/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi adminGroup() {
+        return GroupedOpenApi.builder()
+                .group("Admin")
+                .pathsToMatch("/api/admin/**")
                 .build();
     }
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
         String swaggerUrl = String.format("http://localhost:%s%s/swagger-ui/index.html", port, contextPath);
-
         log.info("\n----------------------------------------------------------\n\t" +
                 "Swagger UI is available at:\n\t" +
                 "URL: {}\n" +
