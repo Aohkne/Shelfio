@@ -1,7 +1,7 @@
 package com.huukhoa.backend.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huukhoa.backend.dto.response.BaseApiResponse;
+import com.huukhoa.backend.common.response.ApiResponse;
 import com.huukhoa.backend.enums.ErrorCode;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,10 +21,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setStatus(errorCode.getStatusCode().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        BaseApiResponse<?> apiResponse = BaseApiResponse.builder()
-                .code(errorCode.getCode())
-                .message(errorCode.getMessage())
-                .build();
+        ApiResponse<?> apiResponse = ApiResponse.error(errorCode.getMessage());
 
         ObjectMapper mapper = new ObjectMapper();
 

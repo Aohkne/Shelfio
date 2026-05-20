@@ -13,11 +13,11 @@ import lombok.experimental.FieldDefaults;
 public class AuthenticationRequest {
 
     @Schema(
-            description = "Username for login",
-            example = "huu_khoa",
+            description = "Email or username for login",
+            example = "user@example.com or huu_khoa",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
-    String username;
+    String identifier;
 
     @Schema(
             description = "Password for login",

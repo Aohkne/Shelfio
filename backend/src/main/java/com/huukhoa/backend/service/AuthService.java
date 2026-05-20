@@ -1,14 +1,18 @@
 package com.huukhoa.backend.service;
 
+import com.huukhoa.backend.common.enums.MemberStatus;
 import com.huukhoa.backend.dto.request.*;
 import com.huukhoa.backend.dto.response.AuthenticationResponse;
 import com.huukhoa.backend.dto.response.IntrospectResponse;
+import com.huukhoa.backend.dto.response.RegisterResponse;
 import com.huukhoa.backend.entity.InvalidatedToken;
 import com.huukhoa.backend.entity.User;
 import com.huukhoa.backend.enums.ErrorCode;
 import com.huukhoa.backend.enums.Role;
 import com.huukhoa.backend.exception.CustomException;
 import com.huukhoa.backend.mapper.UserMapper;
+import com.huukhoa.backend.member.entity.Member;
+import com.huukhoa.backend.member.repository.MemberRepository;
 import com.huukhoa.backend.repository.InvalidatedTokenRepository;
 import com.huukhoa.backend.repository.RoleRepository;
 import com.huukhoa.backend.repository.UserRepository;
@@ -19,7 +23,9 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -31,6 +37,7 @@ import java.util.List;
 public class AuthService {
     UserRepository userRepository;
     RoleRepository roleRepository;
+    MemberRepository memberRepository;
     InvalidatedTokenRepository invalidatedTokenRepository;
 
     JwtUtil jwtUtil;
@@ -38,18 +45,15 @@ public class AuthService {
     PasswordEncoder passwordEncoder;
 
     public AuthenticationResponse login(AuthenticationRequest request) {
-        // Find user
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.findByEmail(request.getIdentifier())
+                .orElseGet(() -> userRepository.findByUsername(request.getIdentifier())
+                        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND)));
 
-        // Verify password
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
-
         if (!authenticated) {
             throw new CustomException(ErrorCode.UNAUTHENTICATED);
         }
 
-        // Generate tokens
         String accessToken = jwtUtil.generateToken(user);
         String refreshToken = jwtUtil.generateRefreshToken(user);
 
@@ -60,20 +64,41 @@ public class AuthService {
                 .build();
     }
 
-    public User register(UserCreationRequest request) {
+    @Transactional
+    public RegisterResponse register(UserCreationRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new CustomException(ErrorCode.USER_EMAIL_ALREADY_EXISTS);
+        }
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new CustomException(ErrorCode.USER_USERNAME_ALREADY_EXISTS);
         }
-        User user = userMapper.toUser(request);
 
-        // PASSWORD
+        User user = userMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        // ROLE
         var roles = roleRepository.findAllById(List.of(Role.MEMBER.name()));
         user.setRoles(new HashSet<>(roles));
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        String memberCode = generateMemberCode();
+        Member member = Member.builder()
+                .user(savedUser)
+                .memberCode(memberCode)
+                .status(MemberStatus.ACTIVE)
+                .joinDate(LocalDate.now())
+                .build();
+        Member savedMember = memberRepository.save(member);
+
+        return RegisterResponse.builder()
+                .id(savedUser.getId())
+                .username(savedUser.getUsername())
+                .email(savedUser.getEmail())
+                .fullname(savedUser.getFullname())
+                .memberCode(savedMember.getMemberCode())
+                .memberStatus(savedMember.getStatus())
+                .joinDate(savedMember.getJoinDate())
+                .build();
     }
 
     public IntrospectResponse verifyToken(IntrospectRequest request) {
@@ -82,47 +107,30 @@ public class AuthService {
 
     public AuthenticationResponse refreshToken(RefreshRequest request) {
         try {
-            // === VERIFY REFRESH TOKEN ===
-            IntrospectRequest introspectRequest = IntrospectRequest.builder()
-                    .token(request.getRefreshtoken())
-                    .build();
-
-            var introspectResponse = verifyToken(introspectRequest);
-
-            if (!introspectResponse.isValid()) {
-                throw new CustomException(ErrorCode.UNAUTHENTICATED);
-            }
-
-            // Check refresh token
             String tokenType = jwtUtil.extractTokenType(request.getRefreshtoken());
             if (!"REFRESH".equals(tokenType)) {
                 throw new CustomException(ErrorCode.INVALID_TOKEN_TYPE);
             }
 
-            // Invalidate refresh token cũ
             String jti = jwtUtil.extractJti(request.getRefreshtoken());
-            Date expiryTime = jwtUtil.extractExpiration(request.getRefreshtoken());
+            if (invalidatedTokenRepository.existsById(jti)) {
+                throw new CustomException(ErrorCode.UNAUTHENTICATED);
+            }
 
-            InvalidatedToken invalidatedToken = InvalidatedToken.builder()
-                    .id(jti)
-                    .expiryTime(expiryTime)
-                    .build();
+            Date expiry = jwtUtil.extractExpiration(request.getRefreshtoken());
+            if (expiry.before(new Date())) {
+                throw new CustomException(ErrorCode.UNAUTHENTICATED);
+            }
 
-            invalidatedTokenRepository.save(invalidatedToken);
-
-            // === GET USER ===
-            var username = jwtUtil.extractUsername(request.getRefreshtoken());
-
+            String username = jwtUtil.extractUsername(request.getRefreshtoken());
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-            // === GENERATE NEW TOKENS ===
             String newAccessToken = jwtUtil.generateToken(user);
-            String newRefreshToken = jwtUtil.generateRefreshToken(user);
 
             return AuthenticationResponse.builder()
                     .accesstoken(newAccessToken)
-                    .refreshToken(newRefreshToken)
+                    .refreshToken(request.getRefreshtoken())
                     .authenticated(true)
                     .build();
 
@@ -135,34 +143,26 @@ public class AuthService {
     }
 
     public void logout(LogoutRequest request) {
+        invalidateToken(request.getAccessToken());
+        invalidateToken(request.getRefreshToken());
+    }
+
+    private void invalidateToken(String token) {
+        if (token == null || token.isBlank()) return;
         try {
-            // Verify token
-            IntrospectRequest introspectRequest = IntrospectRequest.builder()
-                    .token(request.getToken())
-                    .build();
-
-            var introspectResponse = verifyToken(introspectRequest);
-
-            if (!introspectResponse.isValid()) {
-                throw new CustomException(ErrorCode.UNAUTHENTICATED);
-            }
-
-            // Invalidate token
-            String jti = jwtUtil.extractJti(request.getToken());
-            Date expiryTime = jwtUtil.extractExpiration(request.getToken());
-
+            String jti = jwtUtil.extractJti(token);
+            Date expiryTime = jwtUtil.extractExpiration(token);
             InvalidatedToken invalidatedToken = InvalidatedToken.builder()
                     .id(jti)
                     .expiryTime(expiryTime)
                     .build();
-
             invalidatedTokenRepository.save(invalidatedToken);
-
-        } catch (CustomException e) {
-            throw e;
         } catch (Exception e) {
-            log.error("Logout failed: {}", e.getMessage(), e);
-            throw new CustomException(ErrorCode.UNAUTHENTICATED);
+            log.warn("Failed to invalidate token: {}", e.getMessage());
         }
+    }
+
+    private String generateMemberCode() {
+        return "MEM-" + String.format("%04d", (int) (Math.random() * 10000));
     }
 }

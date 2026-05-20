@@ -31,8 +31,8 @@ open:
 
 jwt:
   secret: my-super-secret-key-my-super-secret-key-my-super-secret-key
-  expiration: 3600 # in second
-  refresh-duration: 36000 # in second
+  expiration: 900 # 15 minutes in seconds
+  refresh-duration: 604800 # 7 days in seconds
 
 server:
   port: 8080
