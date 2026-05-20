@@ -38,6 +38,21 @@ public enum ErrorCode {
     PERMISSION_NOT_FOUND(404, "Permission not found", HttpStatus.NOT_FOUND),
     PERMISSION_ALREADY_EXISTS(400, "Permission already exists", HttpStatus.BAD_REQUEST),
     PERMISSION_NAME_INVALID(400, "Permission name invalid", HttpStatus.BAD_REQUEST),
+
+    // BOOK
+    BOOK_NOT_FOUND(404, "Book not found", HttpStatus.NOT_FOUND),
+    BOOK_ISBN_ALREADY_EXISTS(400, "Book with this ISBN already exists", HttpStatus.BAD_REQUEST),
+    BOOK_NOT_AVAILABLE(400, "Book is not available for borrowing", HttpStatus.BAD_REQUEST),
+    BOOK_CURRENTLY_BORROWED(400, "Book is currently borrowed and cannot be deleted", HttpStatus.BAD_REQUEST),
+
+    // MEMBER
+    MEMBER_NOT_FOUND(404, "Member not found", HttpStatus.NOT_FOUND),
+    MEMBER_SUSPENDED(400, "Member account is suspended", HttpStatus.BAD_REQUEST),
+    MEMBER_ALREADY_BORROWING(400, "Member is already borrowing this book", HttpStatus.BAD_REQUEST),
+
+    // BORROWING
+    BORROWING_NOT_FOUND(404, "Borrowing record not found", HttpStatus.NOT_FOUND),
+    BORROWING_ALREADY_RETURNED(400, "This book has already been returned", HttpStatus.BAD_REQUEST),
     ;
 
     int code;
