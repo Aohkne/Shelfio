@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres_db
-    username: postgres_user
-    password: postgres_pass
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/postgres_db}
+    username: ${DB_USER:postgres_user}
+    password: ${DB_PASS:postgres_pass}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -30,9 +30,9 @@ open:
     serverDes: Local backend service
 
 jwt:
-  secret: my-super-secret-key-my-super-secret-key-my-super-secret-key
-  expiration: 900 # 15 minutes in seconds
-  refresh-duration: 604800 # 7 days in seconds
+  secret: ${JWT_SECRET:my-super-secret-key-my-super-secret-key-my-super-secret-key}
+  expiration: ${JWT_ACCESS_EXPIRY:900}
+  refresh-duration: ${JWT_REFRESH_EXPIRY:604800}
 
 server:
   port: 8080
