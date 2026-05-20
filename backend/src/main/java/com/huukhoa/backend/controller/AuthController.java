@@ -6,7 +6,6 @@ import com.huukhoa.backend.dto.response.BaseApiResponse;
 import com.huukhoa.backend.dto.response.IntrospectResponse;
 import com.huukhoa.backend.entity.User;
 import com.huukhoa.backend.service.AuthService;
-import com.huukhoa.backend.service.UserService;
 import com.nimbusds.jose.JOSEException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

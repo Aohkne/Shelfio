@@ -70,7 +70,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         // ROLE
-        var roles = roleRepository.findAllById(List.of(Role.USER.name()));
+        var roles = roleRepository.findAllById(List.of(Role.MEMBER.name()));
         user.setRoles(new HashSet<>(roles));
 
         return userRepository.save(user);
