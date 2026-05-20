@@ -30,7 +30,7 @@ A Spring Boot 3 backend for managing books, members, and borrowings with JWT aut
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/shelfio.git
+git clone https://github.com/Aohkne/shelfio.git
 cd shelfio
 
 # 2. Configure environment
