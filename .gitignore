@@ -1,1 +1,12 @@
 .env
+
+# GitNexus index (large binary, generated locally)
+.gitnexus/
+.claude/
+AGENTS.md
+CLAUDE.md
+.vscode
+gitnexus-log.txt
+
+# VS Code personal settings (keep mcp.json committed)
+.vscode/settings.json
